@@ -52,8 +52,8 @@ def get_date_img(dominant_color):
 
     now = datetime.now()
 
-    holiday_json = f'resource/{now.strftime("%Y")}.json'
-    holiday_json2 = f'resource/{int(now.strftime("%Y"))+1}.json'
+    holiday_json = f'resource/holiday/{now.strftime("%Y")}.json'
+    holiday_json2 = f'resource/holiday/{int(now.strftime("%Y"))+1}.json'
 
     if os.path.exists(holiday_json):
         with open(holiday_json,'r') as f:

@@ -1,0 +1,5 @@
+beautifulsoup4==4.12.2
+Pillow==10.0.1
+Pillow==10.1.0
+Requests==2.31.0
+schedule==1.2.1
