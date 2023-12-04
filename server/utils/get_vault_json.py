@@ -3,8 +3,8 @@ import glob
 import json
 from PIL import Image
 
-dir = './server/resource/Images'
-vault_path = './server/vars/vault.json'
+dir = './resource/Images'
+vault_path = './vars/vault.json'
 ext_list = ['.jpg','.png','.jpeg','.JPG','.PNG','.JPEG']
 
 img_list = []
