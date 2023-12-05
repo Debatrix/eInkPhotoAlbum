@@ -13,7 +13,7 @@ def dithering(image):
     pal_image.putpalette((16,14,27,  169,164,155,  19,30,19,  21,15,50,  122,41,37,  156,127,56,  128,67,54) + (0,0,0)*249)
 
     image_7color = image.convert("RGB").quantize(palette=pal_image)
-    image_7color = image_7color.convert("RGB")
+    # image_7color = image_7color.convert("RGB")
 
     return image_7color
 
@@ -27,7 +27,7 @@ def buffImg(image):
     for i in range(0, len(buf_7color), 2):
         buf[idx] = (buf_7color[i] << 4) + buf_7color[i+1]
         idx += 1
-    return buf
+    return bytes(buf)
 
 def get_dominant_color(pil_img):
     img = pil_img.copy()

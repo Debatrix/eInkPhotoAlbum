@@ -3,6 +3,7 @@ import cgi
 import json
 import os
 import time
+import hashlib
 import logging
 import threading
 from io import BytesIO
@@ -15,7 +16,7 @@ from logging.handlers import TimedRotatingFileHandler
 import schedule
 from PIL import Image
 
-from image_processing import get_calendar_img
+from image_processing import get_calendar_img,buffImg
 from config import *
 
 # %%
@@ -42,6 +43,14 @@ def save_img(calendar_img,name=None):
         path = os.path.join(calendar_img_dir,'{}.png'.format(name))
     calendar_img.save(path)
     return path
+
+def file_md5(file_path):
+    h,chunk = hashlib.md5(), 0
+    with open(file_path, 'rb') as f:
+        while chunk != b'':
+            chunk = f.read(1024)
+            h.update(chunk)
+    return h.hexdigest()
 
 # %%
 def reset_queue():
@@ -96,6 +105,27 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(bytes(message, "utf8"))
 
+    def _send_img(self, file_path):
+        if os.path.isfile(file_path):
+            with open(file_path, 'rb') as f:
+                self.send_response(200)
+                self.send_header('Content-type', 'image/png')
+                self.end_headers()
+                self.wfile.write(f.read())
+        else:
+            self.send_error(404)
+    
+    def _send_buffImg(self, file_path):
+        if os.path.isfile(file_path):
+            img = Image.open(file_path)
+            self.send_response(200)
+            self.send_header('Content-type', 'image/bmp')
+            self.end_headers()
+            img = buffImg(img)
+            self.wfile.write(img)
+        else:
+            self.send_error(404)
+
     def do_GET(self):
         if self.path == '/':
             self._send_response('''
@@ -110,20 +140,35 @@ class RequestHandler(BaseHTTPRequestHandler):
             ''')
         else:
             file_path = self.path[1:]  # remove the leading '/'
-            if file_path == 'd':
-                file_path = os.path.join(calendar_img_dir,'next.png')
-                if not os.path.isfile(file_path):
+            try:
+                if file_path == 'hash':
+                    file_path = os.path.join(calendar_img_dir,'next.png')
+                    if not os.path.isfile(file_path):
+                        img_dequeue()
+                    hash = file_md5(file_path)
+                    logging.info('hash of next image:{}'.format(hash))
+                    self._send_response(hash)
+                elif file_path == 'show':
+                    file_path = os.path.join(calendar_img_dir,'next.png')
+                    if not os.path.isfile(file_path):
+                        img_dequeue()
+                    self._send_img(file_path)
+                elif file_path == 'next':
                     img_dequeue()
-            else:
-                file_path = os.path.join(calendar_img_dir,file_path)
-                if not os.path.isfile(file_path):
-                    self.send_error(404)
-                    return
-            with open(file_path, 'rb') as f:
-                self.send_response(200)
-                self.send_header('Content-type', 'image/png')
-                self.end_headers()
-                self.wfile.write(f.read())
+                    file_path = os.path.join(calendar_img_dir,'next.png')
+                    self._send_img(file_path)
+                elif file_path == 'buffer':
+                    file_path = os.path.join(calendar_img_dir,'next.png')
+                    if not os.path.isfile(file_path):
+                        img_dequeue()
+                    self._send_buffImg(file_path)
+                else:
+                    file_path = os.path.join(calendar_img_dir,file_path)
+                    self._send_img(file_path)
+            except Exception as e:
+                logging.error(e)
+                self.send_error(404)
+                
 
     def do_POST(self):
         form = cgi.FieldStorage(
@@ -154,16 +199,12 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 
 # %%
-schedule.every().day.at("03:45").do(img_dequeue)
-schedule.every().day.at("14:45").do(img_dequeue)
-schedule.every().sunday.at("00:00").do(reset_queue)
-
 def run_schedule():
     while True:
         schedule.run_pending()
         time.sleep(1)
 
-def run(server_class=ThreadingHTTPServer, handler_class=RequestHandler):
+def run_server(server_class=ThreadingHTTPServer, handler_class=RequestHandler):
     server_address = ('', port)
     httpd = server_class(server_address, handler_class)
     httpd.serve_forever()
@@ -185,7 +226,13 @@ if __name__ == '__main__':
         ],
     )
 
-    reset_queue()
+    # schedules
+    for img_schedule in schedules:
+        schedule.every().day.at(img_schedule).do(img_dequeue)
+        logging.info('Update image at {} every day'.format(img_schedule))
+    schedule.every().sunday.at("00:00").do(reset_queue)
     schedule_thread = threading.Thread(target=run_schedule)
     schedule_thread.start()
-    run()
+
+    reset_queue()
+    run_server()
