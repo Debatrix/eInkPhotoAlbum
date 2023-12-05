@@ -249,3 +249,4 @@ server/vars/*
 server/resource/holiday/*
 server/config.py
 server/resource/Images/
+!server/resource/holiday/.gitkeep

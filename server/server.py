@@ -1,11 +1,11 @@
 # %%
 import cgi
-from io import BytesIO
 import json
+import os
 import time
 import logging
 import threading
-import os.path as osp
+from io import BytesIO
 from random import sample
 from datetime import datetime
 from collections import OrderedDict
@@ -20,7 +20,7 @@ from config import *
 
 # %%
 def load_json(path):
-    if osp.exists(path):
+    if os.path.exists(path):
         with open(path,'r') as f:
             return json.load(f)
     else:
@@ -34,12 +34,12 @@ def save_img(calendar_img,name=None):
     if name is None:
         name = datetime.now().strftime('%Y%m%d')
         for i in range(100):
-            path = osp.join(calendar_img_dir,'{}{:0>2}.png'.format(name,i))
-            if not osp.exists(path):
+            path = os.path.join(calendar_img_dir,'{}{:0>2}.png'.format(name,i))
+            if not os.path.exists(path):
                 break
-        path = osp.join(calendar_img_dir,'{}.png'.format(datetime.now().strftime('%Y%m%d%H%M%S')))
+        path = os.path.join(calendar_img_dir,'{}.png'.format(datetime.now().strftime('%Y%m%d%H%M%S')))
     else:
-        path = osp.join(calendar_img_dir,'{}.png'.format(name))
+        path = os.path.join(calendar_img_dir,'{}.png'.format(name))
     calendar_img.save(path)
     return path
 
@@ -111,12 +111,12 @@ class RequestHandler(BaseHTTPRequestHandler):
         else:
             file_path = self.path[1:]  # remove the leading '/'
             if file_path == 'd':
-                file_path = osp.join(calendar_img_dir,'next.png')
-                if not osp.isfile(file_path):
+                file_path = os.path.join(calendar_img_dir,'next.png')
+                if not os.path.isfile(file_path):
                     img_dequeue()
             else:
-                file_path = osp.join(calendar_img_dir,file_path)
-                if not osp.isfile(file_path):
+                file_path = os.path.join(calendar_img_dir,file_path)
+                if not os.path.isfile(file_path):
                     self.send_error(404)
                     return
             with open(file_path, 'rb') as f:
@@ -135,7 +135,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         if fileitem.filename:
             name = datetime.now().strftime('%Y%m%d%H%M%S.png')
             img = Image.open(BytesIO(fileitem.file.read()))
-            img_path = osp.join(upload_dir,name)
+            img_path = os.path.join(upload_dir,name)
             img.save(img_path)
             cabin = load_json(cabin_path)
             queue = OrderedDict(cabin['queue'])
@@ -169,9 +169,16 @@ def run(server_class=ThreadingHTTPServer, handler_class=RequestHandler):
     httpd.serve_forever()
 
 if __name__ == '__main__':
+    # create dirs
+    os.makedirs(os.path.dirname(log_path),exist_ok=True)
+    os.makedirs(calendar_img_dir,exist_ok=True)
+    os.makedirs(upload_dir,exist_ok=True)
+    assert os.path.exists(font_path), 'Font not found: {}!'.format(os.path.basename(font_path))
+    assert os.path.exists(vault_path), 'Vault not found!'
+    
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s [%(filename)s] => %(message)s",
+        format="%(asctime)s [%(levelname)s] => %(message)s",
         handlers=[
             TimedRotatingFileHandler(log_path,'D',14,0),
             logging.StreamHandler()
