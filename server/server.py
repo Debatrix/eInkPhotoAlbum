@@ -16,7 +16,7 @@ from logging.handlers import TimedRotatingFileHandler
 import schedule
 from PIL import Image
 
-from image_processing import get_calendar_img,buffImg
+from image_processing import dithering, get_calendar_img,buffImg
 from config import *
 
 # %%
@@ -62,7 +62,7 @@ def reset_queue():
     archive = set(cabin.get('archive',[]))
     vault_img = set(list(vault[wh_flag].keys()))
 
-    if len(vault_img-archive)<=0:
+    if len(vault_img-archive)<=min_queue_size:
         archive = set()
         logging.info('reset archive!')
 
@@ -106,13 +106,21 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(bytes(message, "utf8"))
 
-    def _send_img(self, file_path):
+    def _send_img(self, file_path,is_dithering=False):
         if os.path.isfile(file_path):
-            with open(file_path, 'rb') as f:
-                self.send_response(200)
-                self.send_header('Content-type', 'image/png')
-                self.end_headers()
-                self.wfile.write(f.read())
+            self.send_response(200)
+            self.send_header('Content-type', 'image/png')
+            self.end_headers()
+            if is_dithering:
+                img = Image.open(file_path)
+                img = dithering(img)
+                img_io = BytesIO()
+                img.save(img_io, 'PNG')
+                img_io.seek(0)
+                self.wfile.write(img_io.read())
+            else:
+                with open(file_path, 'rb') as f:
+                    self.wfile.write(f.read())
         else:
             self.send_error(404)
     
@@ -150,20 +158,21 @@ class RequestHandler(BaseHTTPRequestHandler):
                     hash = file_md5(file_path)
                     logging.info('hash of next image:{}'.format(hash))
                     self._send_response(hash)
+                elif file_path == 'next':
+                    img_dequeue() # force update
+                    file_path = os.path.join(calendar_img_dir,'next.png')
+                    self._send_img(file_path,is_dithering=True)
                 elif file_path == 'show':
                     file_path = os.path.join(calendar_img_dir,'next.png')
                     if not os.path.isfile(file_path):
                         img_dequeue()
-                    self._send_img(file_path)
-                elif file_path == 'next':
-                    img_dequeue()
-                    file_path = os.path.join(calendar_img_dir,'next.png')
-                    self._send_img(file_path)
-                elif file_path == 'buffer':
+                    self._send_img(file_path,is_dithering=True)
+                elif file_path == 'bytes':
                     file_path = os.path.join(calendar_img_dir,'next.png')
                     if not os.path.isfile(file_path):
                         img_dequeue()
                     self._send_buffImg(file_path)
+                    logging.info('send bytes')
                 else:
                     file_path = os.path.join(calendar_img_dir,file_path)
                     self._send_img(file_path)

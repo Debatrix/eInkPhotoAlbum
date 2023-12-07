@@ -10,7 +10,8 @@ from config import *
 # %%
 def dithering(image):
     pal_image = Image.new("P", (1,1))
-    pal_image.putpalette((16,14,27,  169,164,155,  19,30,19,  21,15,50,  122,41,37,  156,127,56,  128,67,54) + (0,0,0)*249)
+    # pal_image.putpalette((16,14,27,  169,164,155,  19,30,19,  21,15,50,  122,41,37,  156,127,56,  128,67,54) + (0,0,0)*249)
+    pal_image.putpalette((0,0,0,  255,255,255,  0,255,0,  0,0,255,  255,0,0,  255,255,0,  255,128,0) + (0,0,0)*249)
 
     image_7color = image.convert("RGB").quantize(palette=pal_image)
     # image_7color = image_7color.convert("RGB")
@@ -48,45 +49,58 @@ def image_reshape(img,img_size=448):
 # %%
 def get_date_img(dominant_color):
     date_img = Image.new('RGB', (150, 150), color = (255, 255, 255))
-    d = ImageDraw.Draw(date_img)
+    draw_handler = ImageDraw.Draw(date_img)
 
     now = datetime.now()
 
-    holiday_json = f'resource/holiday/{now.strftime("%Y")}.json'
-    holiday_json2 = f'resource/holiday/{int(now.strftime("%Y"))+1}.json'
+    _year = int(now.strftime("%Y"))
+    holiday_json = f'resource/holiday/{_year}.json'
+    holiday_json2 = f'resource/holiday/{_year+1}.json'
+    anniversary_json = f'resource/holiday/anniversary.json'
 
+    holiday = []
     if os.path.exists(holiday_json):
         with open(holiday_json,'r') as f:
-            holiday = json.load(f)['days']
+            holiday += json.load(f)['days']
         if os.path.exists(holiday_json2):
             with open(holiday_json2,'r') as f:
                 holiday += json.load(f)['days']
-
-        for day in holiday:
-            date = datetime.strptime(day['date'], "%Y-%m-%d")
-            if date == now:
-                date_string = day['name']
-                if day['isOffDay']:
-                    date_string += '(休)'
-                else:
-                    date_string += '(班)'
-                break
-            elif date > now:
-                date_string = day['name']+'({}天后)'.format((date-now).days)
-                break
-            date_string = '该更新节假日表了'
-
     else:
         date_string = '该更新节假日表了'
 
-    fnt_s = ImageFont.truetype(font_path, 20)
-    fnt_b = ImageFont.truetype(font_path, 60)
+    if os.path.exists(anniversary_json):
+        with open(anniversary_json,'r') as f:
+            anniversary = json.load(f)['days']
+        for _date in anniversary:
+            _date['date'] = '{}-{}'.format(_year,_date['date'])
+            holiday.append(_date)
+    
+    holiday.sort(key=lambda x: x['date'])
+        
+
+    for day in holiday:
+        date = datetime.strptime(day['date'], "%Y-%m-%d")
+        if date == now:
+            date_string = day['name']
+            if day['isOffDay']:
+                date_string += '(休)'
+            else:
+                date_string += '(班)'
+            break
+        elif date > now and day['isOffDay']: # 未来的休假/纪念日
+            date_string = day['name']+'({}天后)'.format((date-now).days)
+            break
+        date_string = '该更新节假日表了'
+
+
+    fnt_s = ImageFont.truetype(font_path, 17)
+    fnt_b = ImageFont.truetype(font_path, 55)
     week_list = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"]
-    d.text((10,10), now.strftime("%Y/%m"), font=fnt_s, fill=(0, 0, 0))
-    d.text((95,10), week_list[now.weekday()], font=fnt_s, fill=(0, 0, 0))
-    d.text((47,45), now.strftime("%d"), font=fnt_b, fill=dominant_color)
+    draw_handler.text((10,10), now.strftime("%Y/%m"), font=fnt_s, fill=(0, 0, 0))
+    draw_handler.text((95,10), week_list[now.weekday()], font=fnt_s, fill=(0, 0, 0))
+    draw_handler.text((45,45), now.strftime("%d"), font=fnt_b, fill=dominant_color)
     if date_string:
-        d.text((10,120), date_string, font=fnt_s, fill=(0, 0, 0))
+        draw_handler.text((10,120), date_string, font=fnt_s, fill=(0, 0, 0))
     return date_img
 
 # %%
@@ -119,17 +133,17 @@ def get_today_wether_img(wether,aqi,dominant_color):
     wether_today_img.paste(iconDay, (15, 10))
     wether_today_img.paste(iconNight, (95, 10))
 
-    d = ImageDraw.Draw(wether_today_img)
-    d.text((10,50), '白天:{}'.format(today['textDay']), font=fnt, fill=(0, 0, 0))
-    d.text((90,50), '夜间:{}'.format(today['textNight']), font=fnt, fill=(0, 0, 0))
-    d.text((10,70), '{}级风'.format(today['windScaleDay']), font=fnt, fill=(0, 0, 0))
-    d.text((90,70), '{}级风'.format(today['windScaleNight']), font=fnt, fill=(0, 0, 0))
-    d.text((10,90), '温度:{}~{}℃ '.format(today['tempMin'],today['tempMax'],), font=fnt, fill=(0, 0, 0))
-    d.text((80,90), 'AQI:{}({})'.format(today['category'],today['aqi']), font=fnt, fill=(0, 0, 0))
-    d.text((10,110), '降水:{}mm '.format(today['precip']), font=fnt, fill=(0, 0, 0))
-    d.text((80,110), '湿度:{}%'.format(today['humidity']), font=fnt, fill=(0, 0, 0))
-    d.text((10,130), '紫外线等级:{}'.format(today['uvIndex']), font=fnt, fill=(0, 0, 0))
-    d.text((80,130), '能见度:{}km'.format(today['vis']), font=fnt, fill=(0, 0, 0))
+    draw_handler = ImageDraw.Draw(wether_today_img)
+    draw_handler.text((10,47), '白天:{}'.format(today['textDay']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((90,47), '夜间:{}'.format(today['textNight']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((10,67), '{}级风'.format(today['windScaleDay']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((90,67), '{}级风'.format(today['windScaleNight']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((10,90), '温度:{}~{}℃ '.format(today['tempMin'],today['tempMax'],), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((80,90), '湿度:{}%'.format(today['humidity']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((10,110), '降水:{}'.format(today['precip']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((70,110), 'AQI:{}({})'.format(today['category'][:2],today['aqi']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((10,130), '紫外线:{}'.format(today['uvIndex']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((70,130), '能见度:{}km'.format(today['vis']), font=fnt, fill=(0, 0, 0))
 
     return wether_today_img
 
@@ -159,18 +173,18 @@ def get_future_wether_img(wether,aqi,dominant_color):
     icon2 = icon2.convert('RGB').resize((30,30))
     wether_future_img.paste(icon2, (22, 85))
 
-    d = ImageDraw.Draw(wether_future_img)
-    wstr = '明天: {}'.format(future1['textDay']) if future1['textDay'] == future1['textNight'] else  '明天: {} 转 {}'.format(future1['textDay'],future1['textNight'])
-    d.text((70,15), wstr, font=fnt, fill=(0, 0, 0))
-    d.text((70,35), '温度: {}~{}℃'.format(future1['tempMin'],future1['tempMax']), font=fnt, fill=(0, 0, 0))
-    d.text((10,55), '降水:{}mm '.format(future1['precip']), font=fnt, fill=(0, 0, 0))
-    d.text((80,55), 'AQI:{}({})'.format(future1['category'],future1['aqi']), font=fnt, fill=(0, 0, 0))
+    draw_handler = ImageDraw.Draw(wether_future_img)
+    wstr = '明天: {}'.format(future1['textDay']) if future1['textDay'] == future1['textNight'] else  '明天: {}转{}'.format(future1['textDay'],future1['textNight'])
+    draw_handler.text((70,15), wstr, font=fnt, fill=(0, 0, 0))
+    draw_handler.text((70,35), '温度: {}~{}℃'.format(future1['tempMin'],future1['tempMax']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((10,55), '降水:{}'.format(future1['precip']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((70,55), 'AQI:{}({})'.format(future1['category'][:2],future1['aqi']), font=fnt, fill=(0, 0, 0))
 
-    wstr = '后天: {}'.format(future2['textDay']) if future2['textDay'] == future2['textNight'] else  '后天: {} 转 {}'.format(future2['textDay'],future2['textNight'])
-    d.text((70,85), wstr, font=fnt, fill=(0, 0, 0))
-    d.text((70,105), '温度: {}~{}℃'.format(future2['tempMin'],future2['tempMax']), font=fnt, fill=(0, 0, 0))
-    d.text((10,125), '降水:{}mm '.format(future2['precip']), font=fnt, fill=(0, 0, 0))
-    d.text((80,125), 'AQI:{}({})'.format(future2['category'],future2['aqi']), font=fnt, fill=(0, 0, 0))
+    wstr = '后天: {}'.format(future2['textDay']) if future2['textDay'] == future2['textNight'] else  '后天: {}转{}'.format(future2['textDay'],future2['textNight'])
+    draw_handler.text((70,85), wstr, font=fnt, fill=(0, 0, 0))
+    draw_handler.text((70,105), '温度: {}~{}℃'.format(future2['tempMin'],future2['tempMax']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((10,125), '降水:{}'.format(future2['precip']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((70,125), 'AQI:{}({})'.format(future2['category'][:2],future2['aqi']), font=fnt, fill=(0, 0, 0))
 
     return wether_future_img
 
