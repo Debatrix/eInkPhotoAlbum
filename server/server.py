@@ -66,7 +66,8 @@ def reset_queue():
         archive = set()
         logging.info('reset archive!')
 
-    queue = sample(list(vault_img-archive),min_queue_size)
+    num = min(min_queue_size,len(vault_img-archive))
+    queue = sample(list(vault_img-archive),num)
     queue = {x:vault[wh_flag][x] for x in queue}
 
     cabin = {'queue':queue,'archive':list(archive)}
