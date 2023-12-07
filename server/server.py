@@ -102,6 +102,7 @@ class RequestHandler(BaseHTTPRequestHandler):
     def _send_response(self, message, status=200):
         self.send_response(status)
         self.send_header('Content-type', 'text/html')
+        self.send_header('Content-Length', len(message))
         self.end_headers()
         self.wfile.write(bytes(message, "utf8"))
 
@@ -118,10 +119,11 @@ class RequestHandler(BaseHTTPRequestHandler):
     def _send_buffImg(self, file_path):
         if os.path.isfile(file_path):
             img = Image.open(file_path)
-            self.send_response(200)
-            self.send_header('Content-type', 'image/bmp')
-            self.end_headers()
             img = buffImg(img)
+            self.send_response(200)
+            self.send_header('Content-type', 'application/octet-stream')
+            self.send_header('Content-Length', len(img))
+            self.end_headers()
             self.wfile.write(img)
         else:
             self.send_error(404)
