@@ -247,4 +247,5 @@ if __name__ == '__main__':
     schedule_thread.start()
 
     reset_queue()
+    logging.info('Start server...')
     run_server()
