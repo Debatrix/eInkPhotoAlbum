@@ -69,13 +69,41 @@ def get_date_img(dominant_color):
     else:
         date_string = '该更新节假日表了'
 
+    holiday_dict = {x['date']:x for x in holiday}
     if os.path.exists(anniversary_json):
         with open(anniversary_json,'r') as f:
             anniversary = json.load(f)['days']
         for _date in anniversary:
-            _date['date'] = '{}-{}'.format(_year,_date['date'])
-            holiday.append(_date)
-    
+            _d = '{}-{}'.format(_year,_date['date'])
+            if _d in holiday_dict:
+                holiday_dict[_d] = {
+                    "name":'{}+{}'.format(_date['name'],holiday_dict[_d]['name']),
+                    'date':_d,
+                    "isOffDay":holiday_dict[_d]['isOffDay']
+                    }
+            else:
+                holiday_dict[_d] = {
+                    "name":_date['name'],
+                    'date':_d,
+                    "isOffDay":True
+                    }
+            _d = '{}-{}'.format(_year+1,_date['date'])
+            if _d in holiday_dict:
+                holiday_dict[_d] = {
+                    "name":'{}、{}'.format(_date['name'],holiday_dict[_d]['name']),
+                    'date':_d,
+                    "isOffDay":holiday_dict[_d]['isOffDay'],
+                    "isAnniversary":True
+                    }
+            else:
+                holiday_dict[_d] = {
+                    "name":_date['name'],
+                    'date':_d,
+                    "isOffDay":False,
+                    "isAnniversary":True
+                    }
+
+    holiday = list(holiday_dict.values())
     holiday.sort(key=lambda x: x['date'])
         
 
@@ -83,12 +111,10 @@ def get_date_img(dominant_color):
         date = datetime.strptime(day['date'], "%Y-%m-%d")
         if date == now:
             date_string = day['name']
-            if day['isOffDay']:
-                date_string += '(休)'
-            else:
+            if not day['isOffDay']:
                 date_string += '(班)'
             break
-        elif date > now and day['isOffDay']: # 未来的休假/纪念日
+        elif date > now and (day['isOffDay'] or day.get('isAnniversary',True)): # 未来的休假/纪念日
             date_string = day['name']+'({}天后)'.format((date-now).days)
             break
         date_string = '该更新节假日表了'
@@ -97,9 +123,9 @@ def get_date_img(dominant_color):
     fnt_s = ImageFont.truetype(font_path, 17)
     fnt_b = ImageFont.truetype(font_path, 55)
     week_list = ["一","二","三","四","五","六","日"]
-    draw_handler.text((10,10), now.strftime("%Y/%m"), font=fnt_s, fill=(0, 0, 0))
-    draw_handler.text((95,10), "星期", font=fnt_s, fill=(0, 0, 0))
-    draw_handler.text((130,10), week_list[now.weekday()], font=fnt_s, fill=dominant_color)
+    draw_handler.text((10,20), now.strftime("%Y/%m"), font=fnt_s, fill=(0, 0, 0))
+    draw_handler.text((90,20), "星期", font=fnt_s, fill=(0, 0, 0))
+    draw_handler.text((125,20), week_list[now.weekday()], font=fnt_s, fill=dominant_color)
     draw_handler.text((45,45), now.strftime("%d"), font=fnt_b, fill=dominant_color)
     if date_string:
         draw_handler.text((10,120), date_string, font=fnt_s, fill=(0, 0, 0))
