@@ -20,6 +20,8 @@ def dithering(image):
     return image_7color
 
 def buffImg(image):
+    if image.size == (448, 600):
+        image.transpose(Image.ROTATE_270)
     image_temp = dithering(image)
     buf_7color = bytearray(image_temp.tobytes('raw'))
     # PIL does not support 4 bit color, so pack the 4 bits of color
