@@ -56,7 +56,7 @@ def file_md5(file_path):
 # %%
 def reset_queue():
     current = datetime.now()
-    wh_flag = 'w' if int(current.strftime('%U'))%2==0 else 'h'
+    wh_flag = 'w' if int(current.strftime('%U'))%2==1 else 'h'
 
     vault = load_json(vault_path)
     cabin = load_json(cabin_path)
@@ -105,11 +105,12 @@ def next_wakeup():
     for t in schedules:
         t = datetime.strptime(t, "%H:%M")
         dt = datetime(now.year, now.month, now.day, t.hour, t.minute)
+        dt += timedelta(minutes=15)
         if dt < now:
             dt += timedelta(days=1)
         delta = dt - now
         _schedules.append(delta)
-    return str(min(_schedules).seconds+5*60)
+    return str(min(_schedules).seconds)
 
     
 
