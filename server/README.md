@@ -16,7 +16,8 @@
 
 1. 需要修改在`server/config_demo.py`中的内容，并重命名为`server/config.py`.
 2. 假期日历由[holiday-cn](https://github.com/NateScarlet/holiday-cn)提供，使用前请提前下载对应年份的json文件并放置在`resource/holiday`。年份是按照国务院文件标题年份而不是日期年份，12月份的日期可能会被下一年的文件影响，因此最好保证有今明两年的文件。
-3. 自定义纪念日放置在`resource/holiday/anniversary.json`，格式与holiday-cn基本相同。其中`date`不包含年份；`isOffDay`应当均为`true`，否则无法显示剩余几天。
+   1. 另一个选择是使用`utils/get_holiday.py`这个脚本从[https://holiday-api.mooim.com/v1/](https://holiday-api.mooim.com/v1/)获取，除节假日外还可以获取节气、传统节日等，不保证api的有效性。
+3. 自定义纪念日放置在`resource/holiday/anniversary.json`，格式与holiday-cn基本相同。其中`date`不包含年份。
 4. 修改`utils/get_vault_json.py`中的路径并运行，生成`vault.json`文件
 
 `anniversary.json`格式如下:
@@ -27,7 +28,7 @@
         {
             "name": "test",
             "date": "12-10",
-            "isOffDay": true
+            "isOffDay": false
         }
     ]
 }
