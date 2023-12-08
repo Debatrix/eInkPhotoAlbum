@@ -1,6 +1,7 @@
 # %%
 import os
 import json
+from math import ceil
 from datetime import datetime
 
 import requests
@@ -95,9 +96,10 @@ def get_date_img(dominant_color):
 
     fnt_s = ImageFont.truetype(font_path, 17)
     fnt_b = ImageFont.truetype(font_path, 55)
-    week_list = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"]
+    week_list = ["一","二","三","四","五","六","日"]
     draw_handler.text((10,10), now.strftime("%Y/%m"), font=fnt_s, fill=(0, 0, 0))
-    draw_handler.text((95,10), week_list[now.weekday()], font=fnt_s, fill=(0, 0, 0))
+    draw_handler.text((95,10), "星期", font=fnt_s, fill=(0, 0, 0))
+    draw_handler.text((130,10), week_list[now.weekday()], font=fnt_s, fill=dominant_color)
     draw_handler.text((45,45), now.strftime("%d"), font=fnt_b, fill=dominant_color)
     if date_string:
         draw_handler.text((10,120), date_string, font=fnt_s, fill=(0, 0, 0))
@@ -138,9 +140,9 @@ def get_today_wether_img(wether,aqi,dominant_color):
     draw_handler.text((90,47), '夜间:{}'.format(today['textNight']), font=fnt, fill=(0, 0, 0))
     draw_handler.text((10,67), '{}级风'.format(today['windScaleDay']), font=fnt, fill=(0, 0, 0))
     draw_handler.text((90,67), '{}级风'.format(today['windScaleNight']), font=fnt, fill=(0, 0, 0))
-    draw_handler.text((10,90), '温度:{}~{}℃ '.format(today['tempMin'],today['tempMax'],), font=fnt, fill=(0, 0, 0))
-    draw_handler.text((80,90), '湿度:{}%'.format(today['humidity']), font=fnt, fill=(0, 0, 0))
-    draw_handler.text((10,110), '降水:{}'.format(today['precip']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((10,90), '温度:{}~{}°C'.format(today['tempMin'],today['tempMax'],), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((95,90), '湿度:{}%'.format(today['humidity']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((10,110), '降水:{}'.format(int(ceil(float(today['precip'])))), font=fnt, fill=(0, 0, 0))
     draw_handler.text((70,110), 'AQI:{}({})'.format(today['category'][:2],today['aqi']), font=fnt, fill=(0, 0, 0))
     draw_handler.text((10,130), '紫外线:{}'.format(today['uvIndex']), font=fnt, fill=(0, 0, 0))
     draw_handler.text((70,130), '能见度:{}km'.format(today['vis']), font=fnt, fill=(0, 0, 0))
@@ -164,27 +166,27 @@ def get_future_wether_img(wether,aqi,dominant_color):
     icon1 = Image.open(icon1).convert('L')
     icon1.putpalette(palette)
     icon1 = icon1.convert('RGB').resize((30,30))
-    wether_future_img.paste(icon1, (22, 15))
+    wether_future_img.paste(icon1, (12, 15))
 
     icon2 = 'resource/icons/{}.jpg'.format(future2['iconDay'])
     icon2 = icon2 if os.path.exists(icon2) else 'resource/icons/999.jpg'
     icon2 = Image.open(icon2).convert('L')
     icon2.putpalette(palette)
     icon2 = icon2.convert('RGB').resize((30,30))
-    wether_future_img.paste(icon2, (22, 85))
+    wether_future_img.paste(icon2, (12, 85))
 
     draw_handler = ImageDraw.Draw(wether_future_img)
     wstr = '明天: {}'.format(future1['textDay']) if future1['textDay'] == future1['textNight'] else  '明天: {}转{}'.format(future1['textDay'],future1['textNight'])
-    draw_handler.text((70,15), wstr, font=fnt, fill=(0, 0, 0))
-    draw_handler.text((70,35), '温度: {}~{}℃'.format(future1['tempMin'],future1['tempMax']), font=fnt, fill=(0, 0, 0))
-    draw_handler.text((10,55), '降水:{}'.format(future1['precip']), font=fnt, fill=(0, 0, 0))
-    draw_handler.text((70,55), 'AQI:{}({})'.format(future1['category'][:2],future1['aqi']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((55,15), wstr, font=fnt, fill=(0, 0, 0))
+    draw_handler.text((55,35), '温度: {}~{}°C'.format(future1['tempMin'],future1['tempMax']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((5,55), '降水:{}'.format(int(ceil(float(future1['precip'])))), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((55,55), 'AQI:{}({})'.format(future1['category'][:2],future1['aqi']), font=fnt, fill=(0, 0, 0))
 
     wstr = '后天: {}'.format(future2['textDay']) if future2['textDay'] == future2['textNight'] else  '后天: {}转{}'.format(future2['textDay'],future2['textNight'])
-    draw_handler.text((70,85), wstr, font=fnt, fill=(0, 0, 0))
-    draw_handler.text((70,105), '温度: {}~{}℃'.format(future2['tempMin'],future2['tempMax']), font=fnt, fill=(0, 0, 0))
-    draw_handler.text((10,125), '降水:{}'.format(future2['precip']), font=fnt, fill=(0, 0, 0))
-    draw_handler.text((70,125), 'AQI:{}({})'.format(future2['category'][:2],future2['aqi']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((55,85), wstr, font=fnt, fill=(0, 0, 0))
+    draw_handler.text((55,105), '温度: {}~{}°C'.format(future2['tempMin'],future2['tempMax']), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((5,125), '降水:{}'.format(int(ceil(float(future2['precip'])))), font=fnt, fill=(0, 0, 0))
+    draw_handler.text((55,125), 'AQI:{}({})'.format(future2['category'][:2],future2['aqi']), font=fnt, fill=(0, 0, 0))
 
     return wether_future_img
 
