@@ -8,8 +8,9 @@ import logging
 import threading
 from io import BytesIO
 from random import sample
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import OrderedDict
+from urllib.parse import urlparse, parse_qs
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from logging.handlers import TimedRotatingFileHandler
 
@@ -98,6 +99,20 @@ def process_img(main_img):
         save_img(calendar_img)
     return calendar_img
 
+def next_wakeup():
+    now = datetime.now()
+    _schedules = []
+    for t in schedules:
+        t = datetime.strptime(t, "%H:%M")
+        dt = datetime(now.year, now.month, now.day, t.hour, t.minute)
+        if dt < now:
+            dt += timedelta(days=1)
+        delta = dt - now
+        _schedules.append(delta)
+    return str(min(_schedules).seconds+5*60)
+
+    
+
 # %%
 class RequestHandler(BaseHTTPRequestHandler):
     def _send_response(self, message, status=200):
@@ -138,7 +153,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_GET(self):
-        if self.path == '/':
+        parse_result = urlparse(self.path)
+        if parse_result.path == '/':
             self._send_response('''
                 <html>
                 <body>
@@ -150,7 +166,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 </html>
             ''')
         else:
-            file_path = self.path[1:]  # remove the leading '/'
+            file_path = parse_result.path[1:]  # remove the leading '/'
             try:
                 if file_path == 'hash':
                     file_path = os.path.join(calendar_img_dir,'next.png')
@@ -173,7 +189,19 @@ class RequestHandler(BaseHTTPRequestHandler):
                     if not os.path.isfile(file_path):
                         img_dequeue()
                     self._send_buffImg(file_path)
-                    logging.info('send bytes')
+                    logging.info('send bytes of next image')
+                elif file_path == 'wakeup':
+                    t = next_wakeup()
+                    self._send_response(t)
+                    logging.info('Setup ESP32 to sleep for {} seconds'.format(t))
+                elif file_path == 'info':
+                    parse_query = parse_qs(parse_result.query)
+                    if 'info' in parse_query:
+                        logging.info('ESP32:{}'.format(parse_query['info']))
+                    elif 'error' in parse_query:
+                        logging.error('ESP32:{}'.format(parse_query['error']))
+                    else:
+                        logging.info('ESP32:{}'.format(parse_result.query))
                 else:
                     file_path = os.path.join(calendar_img_dir,file_path)
                     self._send_img(file_path)
@@ -243,6 +271,7 @@ if __name__ == '__main__':
         schedule.every().day.at(img_schedule).do(img_dequeue)
         logging.info('Update image at {} every day'.format(img_schedule))
     schedule.every().sunday.at("00:00").do(reset_queue)
+    logging.info('Reset queue at 00:00 every sunday')
     schedule_thread = threading.Thread(target=run_schedule)
     schedule_thread.start()
 
