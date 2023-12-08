@@ -56,7 +56,7 @@ def file_md5(file_path):
 # %%
 def reset_queue():
     current = datetime.now()
-    wh_flag = 'w' if int(current.strftime('%U'))%2==0 else 'h'
+    wh_flag = 'w' if int(current.strftime('%U'))%2==1 else 'h'
 
     vault = load_json(vault_path)
     cabin = load_json(cabin_path)

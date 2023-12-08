@@ -21,7 +21,7 @@ def dithering(image):
 
 def buffImg(image):
     if image.size == (448, 600):
-        image.transpose(Image.ROTATE_270)
+        image = image.transpose(Image.ROTATE_90)
     image_temp = dithering(image)
     buf_7color = bytearray(image_temp.tobytes('raw'))
     # PIL does not support 4 bit color, so pack the 4 bits of color
@@ -248,7 +248,7 @@ def get_calendar_img(location,key,main_img,is_dithering=False):
         calendar_img.paste(date_img,(0,448))
         calendar_img.paste(wether_today_img,(150,448))
         calendar_img.paste(wether_future_img,(300,448))
-        calendar_img.transpose(Image.ROTATE_270)
+        # calendar_img = calendar_img.transpose(Image.ROTATE_90)
     else:
         calendar_img = Image.new('RGB', (600, 448), color = (255, 255, 255))
         off_set = (448-main_img.width)//2
