@@ -117,7 +117,7 @@ def get_date_img(dominant_color):
                 date_string += '(班)'
             break
         elif date > now and (day['isOffDay'] or day.get('isAnniversary',True)): # 未来的休假/纪念日
-            date_string = day['name']+'({}天后)'.format((date-now).days)
+            date_string = day['name']+'({}天后)'.format(ceil((date-now).seconds/3600/24))
             break
         date_string = '该更新节假日表了'
 
@@ -219,14 +219,21 @@ def get_future_wether_img(wether,aqi,dominant_color):
     return wether_future_img
 
 def get_wether_img(location,key,dominant_color):
-    wether,aqi = get_wether(location,key)
     try:
+        wether,aqi = get_wether(location,key)
+    except Exception as e:
+        print(e)
+        wether,aqi = None, None
+    
+    try:
+        assert wether is not None and aqi is not None
         wether_today_img = get_today_wether_img(wether,aqi,dominant_color)
     except Exception as e:
         print(e)
         wether_today_img = Image.new('RGB', (150, 150), color = (255, 255, 255))
 
     try:
+        assert wether is not None and aqi is not None
         wether_future_img = get_future_wether_img(wether,aqi,dominant_color)
     except Exception as e:
         print(e)
