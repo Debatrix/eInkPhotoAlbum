@@ -109,15 +109,17 @@ def get_date_img(dominant_color):
     holiday.sort(key=lambda x: x['date'])
         
 
+    now_day = datetime.strptime(now.strftime("%Y-%m-%d"), "%Y-%m-%d")
     for day in holiday:
         date = datetime.strptime(day['date'], "%Y-%m-%d")
-        if date == now:
+        delta_day = (date - now_day).days
+        if delta_day == 0:
             date_string = day['name']
             if not day['isOffDay']:
                 date_string += '(班)'
             break
-        elif date > now and (day['isOffDay'] or day.get('isAnniversary',True)): # 未来的休假/纪念日
-            date_string = day['name']+'({}天后)'.format(ceil((date-now).seconds/3600/24))
+        elif delta_day > 0 and (day['isOffDay'] or day.get('isAnniversary',True)): # 未来的休假/纪念日
+            date_string = day['name']+'({}天后)'.format(delta_day)
             break
         date_string = '该更新节假日表了'
 
