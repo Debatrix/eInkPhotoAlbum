@@ -1,4 +1,6 @@
 #include <WiFi.h>
+#include <Arduino.h>
+#include <esp_sleep.h>
 #include <HTTPClient.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,6 +60,20 @@ int getWakeupTime()
     return time;
 }
 
+int getNextImage()
+{
+    String req = (String)host + "/next";
+    HTTPClient http;
+    http.begin(req);
+    int httpCode = http.GET();
+    if (httpCode == HTTP_CODE_OK)
+    {
+        Serial.println("OK");
+    }
+    http.end();
+    return httpCode;
+}
+
 int updateEInk()
 {
     int flag = 0;
@@ -108,9 +124,40 @@ void setup()
 {
     Serial.begin(115200);
     delay(10);
+    pinMode(ButtonPin, INPUT);
+    pinMode(LedPin, OUTPUT);
 
     int time_to_sleep = DEFAULT_TIME_TO_SLEEP;
+    int nextImageFlag = 0;
+    int ledFlag = 0;
+    int buttonState;
 
+    // get wakeup reason
+    esp_sleep_wakeup_cause_t wakeup_reason;
+    wakeup_reason = esp_sleep_get_wakeup_cause();
+
+    if (wakeup_reason == ESP_SLEEP_WAKEUP_EXT0)
+    {
+        Serial.println("Wakeup caused by external signal using RTC_IO");
+        ledFlag = 1;
+        digitalWrite(LedPin, HIGH);
+        delay(500);
+        // check if button is pressed
+        buttonState = digitalRead(ButtonPin);
+        if (buttonState == HIGH)
+        {
+            digitalWrite(LedPin, LOW);
+            delay(200);
+            digitalWrite(LedPin, HIGH);
+        }
+        buttonState = digitalRead(ButtonPin);
+        if (buttonState == HIGH)
+        {
+            nextImageFlag = 1;
+        }
+    }
+
+    // connect to wifi
     int wifi_connect_try = 0;
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED && wifi_connect_try < MAX_WIFI_CONNECT_RETRY)
@@ -127,31 +174,54 @@ void setup()
         Serial.println(WiFi.localIP());
         delay(200);
 
-        int flag = 0;
+        // get next image
+        if (nextImageFlag == 1)
+        {
+            getNextImage();
+            delay(200);
+        }
 
         // check new image
+        int newImageFlag = 0;
         char newHash[HASH_SIZE] = {0};
-        flag = hashCheck(newHash);
+        newImageFlag = hashCheck(newHash);
 
-        if (strcmp(lastHash, newHash) && (flag == 0))
+        if (strcmp(lastHash, newHash) && (newImageFlag == 0))
         {
             // update E-Ink
             Serial.println("updating...");
-            flag = updateEInk();
+            newImageFlag = updateEInk();
 
             // update hash
-            if (flag == 0)
+            if (newImageFlag == 0)
             {
                 strncpy(lastHash, newHash, HASH_SIZE);
                 sendInfo("info", "EinkUpdated");
+                Serial.println("EinkUpdated");
             }
         }
-        // get wakeup time
+        else
+        {
+            Serial.println("no needed");
+        }
+    }
+
+    // close led
+    if (ledFlag == 1)
+    {
+        delay(LedTime);
+        digitalWrite(LedPin, LOW);
+    }
+
+    // get wakeup time
+    if ((WiFi.status() == WL_CONNECTED))
+    {
         time_to_sleep = getWakeupTime();
     }
 
     // go to sleep
     WiFi.disconnect();
+    esp_sleep_enable_ext0_wakeup(ButtonPin, 1);
     esp_sleep_enable_timer_wakeup((uint64_t)time_to_sleep * uS_TO_S_FACTOR);
     Serial.println("ESP32 will wake up in " + String(time_to_sleep) + " seconds");
     esp_deep_sleep_start();
